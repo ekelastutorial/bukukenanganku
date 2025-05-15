@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to Excel Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background-color: #f0f8ff;
+        }
+        #fileInput {
+            display: none;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .options {
+            margin: 20px 0;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .tab-container {
+            margin: 20px 0;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: #f1f1f1;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 10px;
+        }
+        .example-btn {
+            background-color: #2ecc71;
+            margin-bottom: 10px;
+        }
+        .example-btn:hover {
+            background-color: #27ae60;
+        }
+        .clear-btn {
+            background-color: #e74c3c;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSV to Excel Converter</h1>
+        <p>Konversikan file CSV atau teks CSV ke format Excel (XLSX)</p>
+        
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="file-tab">Unggah File</button>
+                <button class="tab-button" data-tab="text-tab">Teks CSV</button>
+            </div>
+            
+            <div id="file-tab" class="tab-content active">
+                <div class="upload-area" id="uploadArea">
+                    <p>Klik untuk memilih file CSV atau tarik dan lepas file ke sini</p>
+                    <input type="file" id="fileInput" accept=".csv,text/csv">
+                </div>
+                
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="headerCheckbox" checked>
+                        File CSV memiliki header (baris pertama adalah nama kolom)
+                    </label>
+                </div>
+                
+                <button id="convertFileBtn" disabled>Konversi File ke Excel</button>
+            </div>
+            
+            <div id="text-tab" class="tab-content">
+                <p>Masukkan teks CSV di bawah ini:</p>
+                <textarea id="csvText" placeholder="Masukkan data CSV di sini, contoh:
+Nama,Usia,Kota
+John,30,New York
+Jane,25,Chicago"></textarea>
+                
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="textHeaderCheckbox" checked>
+                        Teks CSV memiliki header (baris pertama adalah nama kolom)
+                    </label>
+                </div>
+                
+                <button id="convertTextBtn">Konversi Teks ke Excel</button>
+                <button class="example-btn" id="loadExampleBtn">Contoh CSV</button>
+                <button class="clear-btn" id="clearTextBtn">Bersihkan</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.getAttribute('data-tab');
+                    
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    button.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // File conversion elements
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            const convertFileBtn = document.getElementById('convertFileBtn');
+            const headerCheckbox = document.getElementById('headerCheckbox');
+            
+            // Text conversion elements
+            const csvText = document.getElementById('csvText');
+            const convertTextBtn = document.getElementById('convertTextBtn');
+            const textHeaderCheckbox = document.getElementById('textHeaderCheckbox');
+            const loadExampleBtn = document.getElementById('loadExampleBtn');
+            const clearTextBtn = document.getElementById('clearTextBtn');
+            
+            // Status element
+            const statusDiv = document.getElementById('status');
+            
+            // File conversion functionality
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.backgroundColor = '#f0f8ff';
+            });
+            
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.style.backgroundColor = '';
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.style.backgroundColor = '';
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileSelection();
+                }
+            });
+            
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', handleFileSelection);
+            
+            function handleFileSelection() {
+                if (fileInput.files.length) {
+                    const file = fileInput.files[0];
+                    if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+                        convertFileBtn.disabled = false;
+                        showStatus(`File siap: ${file.name}`, 'success');
+                    } else {
+                        convertFileBtn.disabled = true;
+                        showStatus('Silakan pilih file CSV', 'error');
+                    }
+                }
+            }
+            
+            convertFileBtn.addEventListener('click', function() {
+                if (!fileInput.files.length) return;
+                
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const csvData = e.target.result;
+                        const workbook = convertCsvToExcel(csvData, headerCheckbox.checked);
+                        downloadExcel(workbook, file.name.replace('.csv', '.xlsx'));
+                        showStatus('Konversi berhasil! File Excel telah diunduh.', 'success');
+                    } catch (error) {
+                        console.error(error);
+                        showStatus('Terjadi kesalahan saat mengkonversi file: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.onerror = function() {
+                    showStatus('Gagal membaca file', 'error');
+                };
+                
+                reader.readAsText(file);
+            });
+            
+            // Text conversion functionality
+            convertTextBtn.addEventListener('click', function() {
+                const csvData = csvText.value.trim();
+                
+                if (!csvData) {
+                    showStatus('Silakan masukkan teks CSV', 'error');
+                    return;
+                }
+                
+                try {
+                    const workbook = convertCsvToExcel(csvData, textHeaderCheckbox.checked);
+                    downloadExcel(workbook, 'converted_data.xlsx');
+                    showStatus('Konversi berhasil! File Excel telah diunduh.', 'success');
+                } catch (error) {
+                    console.error(error);
+                    showStatus('Terjadi kesalahan saat mengkonversi teks: ' + error.message, 'error');
+                }
+            });
+            
+            loadExampleBtn.addEventListener('click', function() {
+                const exampleCSV = `Nama,Usia,Kota,Profesi
+John Doe,30,New York,Developer
+Jane Smith,25,Chicago,Designer
+Bob Johnson,45,Houston,Manager
+Alice Williams,28,Los Angeles,Analyst`;
+                
+                csvText.value = exampleCSV;
+                showStatus('Contoh CSV telah dimuat', 'success');
+            });
+            
+            clearTextBtn.addEventListener('click', function() {
+                csvText.value = '';
+                showStatus('Teks telah dibersihkan', 'success');
+            });
+            
+            // Common functions
+            function convertCsvToExcel(csvData, hasHeader) {
+                const lines = csvData.split('\n');
+                const result = [];
+                
+                // Parse CSV
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        // Handle quoted values with commas
+                        const row = [];
+                        let inQuotes = false;
+                        let currentField = '';
+                        
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+                            
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                                row.push(currentField);
+                                currentField = '';
+                            } else {
+                                currentField += char;
+                            }
+                        }
+                        
+                        row.push(currentField);
+                        result.push(row);
+                    }
+                });
+                
+                // Create workbook
+                const workbook = XLSX.utils.book_new();
+                let data;
+                
+                if (hasHeader && result.length > 0) {
+                    const headers = result[0];
+                    const rows = result.slice(1);
+                    
+                    // Convert array of arrays to array of objects
+                    const jsonData = rows.map(row => {
+                        const obj = {};
+                        headers.forEach((header, i) => {
+                            obj[header] = row[i] || '';
+                        });
+                        return obj;
+                    });
+                    
+                    data = XLSX.utils.json_to_sheet(jsonData);
+                } else {
+                    data = XLSX.utils.aoa_to_sheet(result);
+                }
+                
+                XLSX.utils.book_append_sheet(workbook, data, 'Sheet1');
+                return workbook;
+            }
+            
+            function downloadExcel(workbook, fileName) {
+                XLSX.writeFile(workbook, fileName);
+            }
+            
+            function showStatus(message, type) {
+                statusDiv.textContent = message;
+                statusDiv.className = 'status ' + type;
+                statusDiv.style.display = 'block';
+                
+                // Hide status after 5 seconds
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>
