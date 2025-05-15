@@ -122,52 +122,63 @@
         .clear-btn:hover {
             background-color: #c0392b;
         }
+        .file-info {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e8f4fc;
+            border-radius: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>CSV to Excel Converter</h1>
-        <p>Konversikan file CSV atau teks CSV ke format Excel (XLSX)</p>
+        <p>Convert your CSV files or text to Excel (XLSX) format</p>
         
         <div class="tab-container">
             <div class="tab-buttons">
-                <button class="tab-button active" data-tab="file-tab">Unggah File</button>
-                <button class="tab-button" data-tab="text-tab">Teks CSV</button>
+                <button class="tab-button active" data-tab="text-tab">CSV Text</button>
+                <button class="tab-button" data-tab="file-tab">Upload File</button>
             </div>
             
-            <div id="file-tab" class="tab-content active">
-                <div class="upload-area" id="uploadArea">
-                    <p>Klik untuk memilih file CSV atau tarik dan lepas file ke sini</p>
-                    <input type="file" id="fileInput" accept=".csv,text/csv">
-                </div>
-                
-                <div class="options">
-                    <label>
-                        <input type="checkbox" id="headerCheckbox" checked>
-                        File CSV memiliki header (baris pertama adalah nama kolom)
-                    </label>
-                </div>
-                
-                <button id="convertFileBtn" disabled>Konversi File ke Excel</button>
-            </div>
-            
-            <div id="text-tab" class="tab-content">
-                <p>Masukkan teks CSV di bawah ini:</p>
-                <textarea id="csvText" placeholder="Masukkan data CSV di sini, contoh:
-Nama,Usia,Kota
+            <div id="text-tab" class="tab-content active">
+                <p>Enter your CSV text below:</p>
+                <textarea id="csvText" placeholder="Enter CSV data here, example:
+Name,Age,City
 John,30,New York
 Jane,25,Chicago"></textarea>
                 
                 <div class="options">
                     <label>
                         <input type="checkbox" id="textHeaderCheckbox" checked>
-                        Teks CSV memiliki header (baris pertama adalah nama kolom)
+                        CSV text has headers (first row contains column names)
                     </label>
                 </div>
                 
-                <button id="convertTextBtn">Konversi Teks ke Excel</button>
-                <button class="example-btn" id="loadExampleBtn">Contoh CSV</button>
-                <button class="clear-btn" id="clearTextBtn">Bersihkan</button>
+                <button id="convertTextBtn">Convert Text to Excel</button>
+                <button class="example-btn" id="loadExampleBtn">Load Example</button>
+                <button class="clear-btn" id="clearTextBtn">Clear</button>
+            </div>
+            
+            <div id="file-tab" class="tab-content">
+                <div class="upload-area" id="uploadArea">
+                    <p>Click to select CSV file or drag and drop file here</p>
+                    <input type="file" id="fileInput" accept=".csv,text/csv">
+                </div>
+                
+                <div id="fileInfo" class="file-info">
+                    File ready: <span id="fileName"></span>
+                </div>
+                
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="headerCheckbox" checked>
+                        CSV file has headers (first row contains column names)
+                    </label>
+                </div>
+                
+                <button id="convertFileBtn" disabled>Convert File to Excel</button>
             </div>
         </div>
         
@@ -199,6 +210,8 @@ Jane,25,Chicago"></textarea>
             const uploadArea = document.getElementById('uploadArea');
             const convertFileBtn = document.getElementById('convertFileBtn');
             const headerCheckbox = document.getElementById('headerCheckbox');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileNameSpan = document.getElementById('fileName');
             
             // Text conversion elements
             const csvText = document.getElementById('csvText');
@@ -241,10 +254,13 @@ Jane,25,Chicago"></textarea>
                     const file = fileInput.files[0];
                     if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
                         convertFileBtn.disabled = false;
-                        showStatus(`File siap: ${file.name}`, 'success');
+                        fileNameSpan.textContent = file.name;
+                        fileInfo.style.display = 'block';
+                        showStatus(`File ready: ${file.name}`, 'success');
                     } else {
                         convertFileBtn.disabled = true;
-                        showStatus('Silakan pilih file CSV', 'error');
+                        fileInfo.style.display = 'none';
+                        showStatus('Please select a CSV file', 'error');
                     }
                 }
             }
@@ -260,15 +276,15 @@ Jane,25,Chicago"></textarea>
                         const csvData = e.target.result;
                         const workbook = convertCsvToExcel(csvData, headerCheckbox.checked);
                         downloadExcel(workbook, file.name.replace('.csv', '.xlsx'));
-                        showStatus('Konversi berhasil! File Excel telah diunduh.', 'success');
+                        showStatus('Conversion successful! Excel file downloaded.', 'success');
                     } catch (error) {
                         console.error(error);
-                        showStatus('Terjadi kesalahan saat mengkonversi file: ' + error.message, 'error');
+                        showStatus('Error converting file: ' + error.message, 'error');
                     }
                 };
                 
                 reader.onerror = function() {
-                    showStatus('Gagal membaca file', 'error');
+                    showStatus('Failed to read file', 'error');
                 };
                 
                 reader.readAsText(file);
@@ -279,34 +295,34 @@ Jane,25,Chicago"></textarea>
                 const csvData = csvText.value.trim();
                 
                 if (!csvData) {
-                    showStatus('Silakan masukkan teks CSV', 'error');
+                    showStatus('Please enter CSV text', 'error');
                     return;
                 }
                 
                 try {
                     const workbook = convertCsvToExcel(csvData, textHeaderCheckbox.checked);
                     downloadExcel(workbook, 'converted_data.xlsx');
-                    showStatus('Konversi berhasil! File Excel telah diunduh.', 'success');
+                    showStatus('Conversion successful! Excel file downloaded.', 'success');
                 } catch (error) {
                     console.error(error);
-                    showStatus('Terjadi kesalahan saat mengkonversi teks: ' + error.message, 'error');
+                    showStatus('Error converting text: ' + error.message, 'error');
                 }
             });
             
             loadExampleBtn.addEventListener('click', function() {
-                const exampleCSV = `Nama,Usia,Kota,Profesi
+                const exampleCSV = `Name,Age,City,Occupation
 John Doe,30,New York,Developer
 Jane Smith,25,Chicago,Designer
 Bob Johnson,45,Houston,Manager
 Alice Williams,28,Los Angeles,Analyst`;
                 
                 csvText.value = exampleCSV;
-                showStatus('Contoh CSV telah dimuat', 'success');
+                showStatus('Example CSV loaded', 'success');
             });
             
             clearTextBtn.addEventListener('click', function() {
                 csvText.value = '';
-                showStatus('Teks telah dibersihkan', 'success');
+                showStatus('Text cleared', 'success');
             });
             
             // Common functions
